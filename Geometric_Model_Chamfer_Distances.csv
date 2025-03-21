@@ -1,0 +1,21 @@
+Geometric Model,Train Chamfer Distance,Valid Chamfer Distance
+PCA (6 components),1.2131804135708637,1.215218393636128
+PCA (12 components),0.7818129672376726,0.7951718175563507
+PCA (16 components),0.6637664838012611,0.6729043858467477
+PCA (24 components),0.5483444641136904,0.5557207763458071
+PCA (50 components),0.42342966209187494,0.4354183210462074
+kPCA (poly degree 1) (6 components),1.2131804056836237,1.2152183679093473
+kPCA (poly degree 1) (12 components),0.7818129723546794,0.7951718267338966
+kPCA (poly degree 1) (12 components) (larger alpha),0.781823526549243,0.7951875872954537
+kPCA (poly degree 1) (16 components),0.663766514238524,0.6729049177294484
+kPCA (poly degree 1) (24 components),0.5483449622661709,0.5557182536012912
+kPCA (poly degree 1) (50 components),0.4233895138825454,0.43538864863382926
+kPCA (poly degree 2) (50 components),0.2332280933924088,0.45097073801696275
+kPCA (poly degree 3) (50 components),7.499130884687893e-07,7.776098173487369
+kPCA (poly degree 4) (50 components),1.1778243816097208e-05,38.047295656342556
+kPCA (RBF) (50 components),3.5703619457852653,3.733104080602806
+kPCA (Sigmoid) (50 components),3.8655105701074155,3.8198338129139766
+Geometric Deep Learning (6 latent variables),,
+Geometric Deep Learning (12 latent variables),,
+Geometric Deep Learning (16 latent variables),,1.6802911283834925
+Geometric Deep Learning (24 latent variables),,
