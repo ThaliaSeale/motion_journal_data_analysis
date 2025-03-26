@@ -1,4 +1,26 @@
 loss_type,beta_value,layers,model_architecture,n_temp_feats,geom_model,n_geom_feats,val_loss
+chamfer_loss,0.001,"[50, 100, 200]",timeVAE,16,gdl,12,1.4795
+,,,timeVAE,12,pca,12,1.099384
+,,,timeVAE,24,pca,12,0.987913
+,,,timeVAE,16,pca,16,1.033677
+,,,timeVAE,24,pca,16,0.961448
+,,,timeVAE,24,pca,24,1.009965
+,,,timeVAE,16,gdl,12,
+,,,timeVAE,24,gdl,12,
+corresponding_points,0.001,"[50, 100, 200]",timeVAE,16,pca,12,1.2874
+chamfer_loss,0.001,"[50, 100, 200]",vae_conv,16,gdl,12,1.6635
+time_series_loss,0.001,"[50, 100, 200]",vae_conv,16,gdl,12,2.294
+chamfer_loss,0.1,"[50, 100, 200]",vae_conv,16,gdl,12,2.0885
+chamfer_loss,0.01,"[50, 100, 200]",vae_conv,16,gdl,12,1.692
+chamfer_loss,0.0001,"[50, 100, 200]",vae_conv,16,gdl,12,1.5285
+chamfer_loss,0.00001,"[50, 100, 200]",vae_conv,16,gdl,12,1.5164
+chamfer_loss,0.001,"[50, 100]",vae_conv,16,gdl,12,1.3301
+chamfer_loss,0.001,"[25, 50, 100]",vae_conv,16,gdl,12,1.6522
+chamfer_loss,0.001,[50],vae_conv,16,gdl,12,1.22
+chamfer_loss,0.001,"[100, 150]",vae_conv,16,gdl,12,1.3353
+chamfer_loss,0.001,[25],vae_conv,16,gdl,12,1.22
+chamfer_loss,0.001,[100],vae_conv,16,gdl,12,1.234637
+chamfer_loss,0.001,"[50, 100, 200]",vae_conv,24,gdl,12,
 corresponding_points,0.001,"[50, 100, 200]",vae_conv,16,pca,12,1.377
 chamfer_loss,0.001,"[50, 100, 200]",vae_conv,16,pca,12,1.534
 time_series_loss,0.001,"[50, 100, 200]",vae_conv,16,pca,12,1.4555
@@ -13,19 +35,4 @@ corresponding_points,0.001,[50],vae_conv,16,pca,12,1.0529
 corresponding_points,0.001,"[100, 150]",vae_conv,16,pca,12,1.1916
 corresponding_points,0.001,[25],vae_conv,16,pca,12,1.0684
 corresponding_points,0.001,[100],vae_conv,16,pca,12,1.0642
-corresponding_points,0.001,"[50, 100, 200]",timeVAE,16,pca,12,1.2874
 corresponding_points,0.001,"[50, 100, 200]",vae_conv,24,pca,12,1.4709
-chamfer_loss,0.001,"[50, 100, 200]",vae_conv,16,gdl,12,1.6635
-time_series_loss,0.001,"[50, 100, 200]",vae_conv,16,gdl,12,2.294
-chamfer_loss,0.1,"[50, 100, 200]",vae_conv,16,gdl,12,2.0885
-chamfer_loss,0.01,"[50, 100, 200]",vae_conv,16,gdl,12,1.692
-chamfer_loss,0.0001,"[50, 100, 200]",vae_conv,16,gdl,12,1.5285
-chamfer_loss,0.00001,"[50, 100, 200]",vae_conv,16,gdl,12,1.5164
-chamfer_loss,0.001,"[50, 100]",vae_conv,16,gdl,12,1.3301
-chamfer_loss,0.001,"[25, 50, 100]",vae_conv,16,gdl,12,1.6522
-chamfer_loss,0.001,[50],vae_conv,16,gdl,12,1.22
-chamfer_loss,0.001,"[100, 150]",vae_conv,16,gdl,12,1.3353
-chamfer_loss,0.001,[25],vae_conv,16,gdl,12,1.22
-chamfer_loss,0.001,[100],vae_conv,16,gdl,12,1.234637
-chamfer_loss,0.001,"[50, 100, 200]",timeVAE,16,gdl,12,1.4795
-chamfer_loss,0.001,"[50, 100, 200]",vae_conv,24,gdl,12,
