@@ -1,0 +1,566 @@
+---
+title: "CinC 2025"
+output: 
+  pdf_document: 
+    keep_tex: yes
+header-includes:
+  \usepackage{booktabs}
+---
+
+```{r, setup, echo = F, results='hide'}
+knitr::opts_chunk$set(echo = F)
+knitr::opts_chunk$set(results= 'hide')
+knitr::opts_chunk$set(fig.show='hide')
+knitr::opts_chunk$set(warning='hide')
+# Loading packages
+library(tidyverse)
+library(ggh4x)
+library(MASS)
+library(caret)
+library(MLeval)
+library(knitr)
+
+# Loading PCAS results 
+## Healthy Data
+healthy_errors <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features/errors.csv')
+healthy_latents <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features/temporal_representations.csv')
+## Incident MI
+iMI_errors <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_MI/errors.csv')
+iMI_latents <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_MI/temporal_representations.csv')
+## Prevalent MI 
+pMI_errors <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_prevalent/errors.csv')
+pMI_latents <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_prevalent/temporal_representations.csv')
+
+# Loading PCA benchmark results
+healthy_ED <- read.csv('/home/wolf6273/singular_spectrum_analysis/healthy_ED_latents.csv')
+healthy_ES <- read.csv('/home/wolf6273/singular_spectrum_analysis/healthy_ES_latents.csv')
+iMI_ED <- read.csv('/home/wolf6273/singular_spectrum_analysis/incident_MI_ED_latents.csv')
+iMI_ES <- read.csv('/home/wolf6273/singular_spectrum_analysis/incident_MI_ES_latents.csv')
+pMI_ED <- read.csv('/home/wolf6273/singular_spectrum_analysis/prevalent_MI_ED_latents.csv')
+pMI_ES <- read.csv('/home/wolf6273/singular_spectrum_analysis/prevalent_MI_ES_latents.csv')
+```
+
+```{r}
+# Creating a combined error df 
+## Formatting the error frames
+healthy_errors %>% 
+  mutate(data = 'healthy') %>% 
+  dplyr::select(-model) -> healthy_errors 
+
+iMI_errors %>% 
+  mutate(data = 'iMI') %>% 
+  dplyr::select(-model) -> iMI_errors
+
+pMI_errors %>% 
+  mutate(data = 'pMI') %>% 
+  dplyr::select(-model) -> pMI_errors
+
+## Combining into a single error frame
+errors <- rbind(healthy_errors,
+                iMI_errors,
+                pMI_errors)
+```
+
+```{r}
+# Combined latent dataset
+healthy_latents %>% 
+  pivot_longer(2:(last_col()-1), names_to = 'latent_var') %>% 
+  mutate(latent_var = as.numeric(str_extract(latent_var, '\\d+')),
+         data = 'healthy') -> healthy_latents
+iMI_latents %>% 
+  pivot_longer(2:(last_col()-1), names_to = 'latent_var') %>% 
+  mutate(latent_var = as.numeric(str_extract(latent_var, '\\d+')),
+         data = 'iMI') -> iMI_latents
+pMI_latents %>% 
+  pivot_longer(2:(last_col()-1), names_to = 'latent_var') %>% 
+  mutate(latent_var = as.numeric(str_extract(latent_var, '\\d+')),
+         data = 'pMI') -> pMI_latents
+
+latents <- rbind(healthy_latents,
+                 iMI_latents,
+                 pMI_latents)
+```
+
+```{r}
+# Combined PCA latnet dataset
+colnames(healthy_ED) <- str_replace(colnames(healthy_ED), 'X', 'ED_')
+colnames(healthy_ES) <- str_replace(colnames(healthy_ES), 'X', 'ES_')
+healthy_pca <- cbind(healthy_ED, healthy_ES)
+healthy_pca %>% mutate(data = 'healthy') -> healthy_pca
+
+colnames(iMI_ED) <- str_replace(colnames(iMI_ED), 'X', 'ED_')
+colnames(iMI_ES) <- str_replace(colnames(iMI_ES), 'X', 'ES_')
+iMI_pca <- cbind(iMI_ED, iMI_ES)
+iMI_pca %>% mutate(data = 'iMI') -> iMI_pca 
+
+colnames(pMI_ED) <- str_replace(colnames(pMI_ED), 'X', 'ED_')
+colnames(pMI_ES) <- str_replace(colnames(pMI_ES), 'X', 'ES_')
+pMI_pca <- cbind(pMI_ED, pMI_ES)
+pMI_pca %>% mutate(data = 'pMI') -> pMI_pca 
+
+pca_latents <- rbind(
+  healthy_pca,
+  iMI_pca,
+  pMI_pca
+)
+pca_latents %>% 
+  relocate(data, .before = 1) -> pca_latents
+pca_latents
+```
+
+# Methods
+
+## Dataset
+
+```{r, results='hold'}
+# Summary table for the number of samples
+errors %>% 
+  group_by(data, error_type) %>% 
+  distinct(sample) %>% 
+  summarise(n_samples = n())
+```
+```{r}
+# Latent traversal data
+# Load data
+model_results <- read_csv("model_results.csv")
+
+# Removing missing results
+model_results <- model_results %>% 
+  dplyr::select(-experiment_description) %>% drop_na()
+
+# Loading and cleaning error data
+## Loading errors
+model_results %>% 
+  mutate(latent_traversal_file = 'time_series_traversal.csv',
+         latent_traversal_file = paste(results_dir, '/', latent_traversal_file, sep = '')) -> model_results
+latent_traversals <- lapply(model_results$latent_traversal_file, read_csv)
+
+## Merging with model_results
+latent_traversals <- Map(function(df, val) {
+  df$results_dir <- val
+  df
+}, latent_traversals, model_results$results_dir)
+latent_traversals <- latent_traversals %>% bind_rows() %>% dplyr::select(-1) # correct when all results found 
+latent_traversals <- merge(model_results,latent_traversals, by='results_dir')
+latent_traversals %>% 
+  dplyr::select(-c(results_dir, latent_traversal_file, model)) -> latent_traversals
+latent_traversals %>%
+  filter(frame == 0) %>%
+  mutate(frame = ifelse(str_detect(temp_model, 'PCA'), 10, 50),
+         frame = as.integer(frame)) %>% 
+  bind_rows(latent_traversals) -> latent_traversals
+```
+
+# Results
+
+We fit the model described in Section \[INSERT REF\] on a training set of healthy individuals, and test the model on a healthy, incident MI and prevalent MI cohort (healthy/iMI/pMI test.)
+
+## Reconstruction
+
+Table [INSERT REFERENCE] shows the mean and standard deviation of the average Chamfer distance over all frames for each subject. We see that although there is a decrease in the reconstruction quality for the iMI and pMI groups, it is not significant, and still below the voxel dimensions of the original images. 
+
+```{r, results='hold'}
+errors %>% 
+  group_by(error_type, data, sample, frame) %>% 
+  summarise(loss = mean(loss)) %>% 
+  group_by(error_type, data, sample) %>% 
+  summarise(loss = mean(loss)) %>% 
+  group_by(data, error_type) %>% 
+  summarise(mean_loss = mean(loss), sd_loss = sd(loss)) %>% 
+  mutate(across(mean_loss:sd_loss, signif, digits = 3)) %>% 
+  mutate(mean_loss = paste(mean_loss, ' (X', sd_loss, ')', sep=''),
+         data = ifelse(data == 'healthy', 'Healthy', data)) %>% 
+  dplyr::select(-sd_loss) %>% 
+  pivot_wider(names_from = error_type, values_from = mean_loss) %>%
+  kable(format = 'latex', booktabs = T, digits = 3, col.names = c('Population', 'Train', 'Test'))
+```
+
+
+## MI Detection
+
+We fit a logistic regression to distinguish iMI and pMI from healthy cases from the reduced dimension temporal representations of the anatomies. We compare this to the baseline of a logistic regression using only features from the ED and ES phases.
+
+
+```{r}
+# Performance Comparison
+n_folds <- 10
+ctrl <- trainControl(method = 'cv',
+                     number = n_folds,
+                     savePredictions = T,
+                     classProbs = T,
+                     verboseIter = T)
+```
+
+```{r}
+## PCA baseline iMI
+pca_latents %>%
+  filter(data == 'healthy' | data == 'iMI') %>%
+  mutate(healthy = as.factor(data)) %>%
+  dplyr::select(-data) %>%
+  relocate(healthy, .before = 1)-> iMI_pca_lr_data
+
+iMI_pca_lr <- glm(healthy ~ ., data = iMI_pca_lr_data, family=binomial())
+iMI_pca_lr
+
+# Parsimonious model
+iMI_pca_lr_step <- iMI_pca_lr %>%
+  stepAIC(trace = 0)
+iMI_pca_lr_step
+
+set.seed(8)
+iMI_pca_model <- train(healthy ~ ., data = iMI_pca_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+iMI_pca_model_parsimonious <- train(iMI_pca_lr_step$formula, data = iMI_pca_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+
+iMI_pca_eval <- evalm(iMI_pca_model)
+iMI_pca_eval_parsimonious <- evalm(iMI_pca_model_parsimonious)
+
+# Storing results
+rownames_to_column(iMI_pca_eval$stdres$`Group 1`) %>%
+  mutate(data = 'iMI_ED_ES', model = 'full') -> iMI_pca_model_metrics
+iMI_pca_model_metrics %>%
+  add_row(rowname = 'Accuracy', Score = iMI_pca_model$results$Accuracy, CI = paste(iMI_pca_model$results$Accuracy - iMI_pca_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', iMI_pca_model$results$Accuracy + iMI_pca_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'iMI_ED_ES', model = 'full')  %>% 
+  add_row(rowname = 'n_feats', Score = 24, model = 'full') -> iMI_pca_model_metrics
+
+rownames_to_column(iMI_pca_eval_parsimonious$stdres$`Group 1`) %>%
+  mutate(data = 'iMI_ED_ES', model = 'parsimonious')-> iMI_pca_model_parsimonious_metrics
+iMI_pca_model_parsimonious_metrics %>%
+  add_row(rowname = 'Accuracy', Score = iMI_pca_model_parsimonious$results$Accuracy, CI = paste(iMI_pca_model_parsimonious$results$Accuracy - iMI_pca_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', iMI_pca_model_parsimonious$results$Accuracy + iMI_pca_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'iMI_ED_ES', model = 'parsimonious') %>% 
+  add_row(rowname = 'n_feats', Score = length(iMI_pca_lr_step$coefficients) - 1, data = 'iMI_ED_ES', model = 'parsimonious')  -> iMI_pca_model_parsimonious_metrics
+iMI_pca_model_metrics
+iMI_pca_model_parsimonious_metrics
+```
+
+```{r}
+## PCA baseline pMI
+pca_latents %>%
+  filter(data == 'healthy' | data == 'pMI') %>%
+  mutate(healthy = as.factor(data)) %>%
+  dplyr::select(-data) %>%
+  relocate(healthy, .before = 1)-> pMI_pca_lr_data
+
+pMI_pca_lr <- glm(healthy ~ ., data = pMI_pca_lr_data, family=binomial())
+pMI_pca_lr
+
+# Parsimonious model
+pMI_pca_lr_step <- pMI_pca_lr %>%
+  stepAIC(trace = 0)
+
+set.seed(8)
+pMI_pca_model <- train(healthy ~ ., data = pMI_pca_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+pMI_pca_model_parsimonious <- train(pMI_pca_lr_step$formula, data = pMI_pca_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+
+pMI_pca_eval <- evalm(pMI_pca_model)
+pMI_pca_eval_parsimonious <- evalm(pMI_pca_model_parsimonious)
+
+
+# Storing results
+rownames_to_column(pMI_pca_eval$stdres$`Group 1`) %>%
+  mutate(data = 'pMI_ED_ES', model = 'full') -> pMI_pca_model_metrics
+pMI_pca_model_metrics %>%
+  add_row(rowname = 'Accuracy', Score = pMI_pca_model$results$Accuracy, CI = paste(pMI_pca_model$results$Accuracy - pMI_pca_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', pMI_pca_model$results$Accuracy + pMI_pca_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'pMI_ED_ES', model = 'full') %>% 
+  add_row(rowname = 'n_feats', Score = 24, data = 'pMI_ED_ES', model = 'full') -> pMI_pca_model_metrics
+
+rownames_to_column(pMI_pca_eval_parsimonious$stdres$`Group 1`) %>%
+  mutate(data = 'pMI_ED_ES', model = 'parsimonious')-> pMI_pca_model_parsimonious_metrics
+pMI_pca_model_parsimonious_metrics %>%
+  add_row(rowname = 'Accuracy', Score = pMI_pca_model_parsimonious$results$Accuracy, CI = paste(pMI_pca_model_parsimonious$results$Accuracy - pMI_pca_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', pMI_pca_model_parsimonious$results$Accuracy + pMI_pca_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'pMI_ED_ES', model = 'parsimonious') %>% 
+  add_row(rowname = 'n_feats', Score = length(pMI_pca_lr_step$coefficients) - 1, data = 'pMI_ED_ES', model = 'parsimonious') -> pMI_pca_model_parsimonious_metrics
+
+pMI_pca_model_metrics
+pMI_pca_model_parsimonious_metrics
+
+```
+
+```{r}
+## PCAxPCAS iMI
+latents  %>%
+  pivot_wider(names_from = latent_var, values_from = value, names_prefix = "latent_") %>%
+  dplyr::select(-split, -X)  -> iMI_lr_data
+iMI_lr_data %>%
+  filter(data == 'healthy' | data == 'iMI') %>%
+  mutate(healthy = as.factor(data)) %>%
+  dplyr::select(-data) %>%
+  relocate(healthy, .before = 1)-> iMI_lr_data
+
+iMI_lr <- glm(healthy ~ ., data = iMI_lr_data, family=binomial())
+
+# Parsimonious model
+iMI_lr_step <- iMI_lr %>%
+  stepAIC(trace = 0)
+
+set.seed(8)
+iMI_model <- train(healthy ~ ., data = iMI_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+iMI_model_parsimonious <- train(iMI_lr_step$formula, data = iMI_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+
+iMI_eval <- evalm(iMI_model)
+iMI_eval_parsimonious <- evalm(iMI_model_parsimonious)
+
+# Storing results
+rownames_to_column(iMI_eval$stdres$`Group 1`) %>%
+  mutate(data = 'iMI', model = 'full') -> iMI_model_metrics
+iMI_model_metrics %>%
+  add_row(rowname = 'Accuracy', Score = iMI_model$results$Accuracy, CI = paste(iMI_model$results$Accuracy - iMI_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', iMI_model$results$Accuracy + iMI_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'iMI', model = 'full') %>% 
+  add_row(rowname = 'n_feats', Score = 71, data = 'iMI', model = 'full')  -> iMI_model_metrics
+
+rownames_to_column(iMI_eval_parsimonious$stdres$`Group 1`) %>%
+  mutate(data = 'iMI', model = 'parsimonious')-> iMI_model_parsimonious_metrics
+iMI_model_parsimonious_metrics %>%
+  add_row(rowname = 'Accuracy', Score = iMI_model_parsimonious$results$Accuracy, CI = paste(iMI_model_parsimonious$results$Accuracy - iMI_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', iMI_model_parsimonious$results$Accuracy + iMI_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'iMI', model = 'parsimonious') %>% 
+  add_row(rowname = 'n_feats', Score = length(iMI_lr_step$coefficients) - 1, data = 'iMI', model = 'parsimonious')  -> iMI_model_parsimonious_metrics
+iMI_model_metrics
+iMI_model_parsimonious_metrics
+```
+
+```{r analysis-of-parsimonious-model-iMI}
+iMI_lr_step_summary <-summary(iMI_lr_step)
+iMI_lr_step_coeffs <- iMI_lr_step$coefficients
+names(iMI_lr_step_coeffs) <- as.numeric(str_extract(names(iMI_lr_step_coeffs), '\\d+'))
+as.data.frame(iMI_lr_step_coeffs) %>% 
+  rownames_to_column() -> iMI_lr_step_coeffs
+```
+
+```{r}
+## PCAxPCAS pMI
+latents  %>%
+  pivot_wider(names_from = latent_var, values_from = value, names_prefix = "latent_") %>%
+  dplyr::select(-split, -X)  -> pMI_lr_data
+pMI_lr_data %>%
+  filter(data == 'healthy' | data == 'pMI') %>%
+  mutate(healthy = as.factor(data)) %>%
+  dplyr::select(-data) %>%
+  relocate(healthy, .before = 1)-> pMI_lr_data
+
+pMI_lr <- glm(healthy ~ ., data = pMI_lr_data, family=binomial())
+
+# Parsimonious model
+pMI_lr_step <- pMI_lr %>%
+  stepAIC(trace = 0)
+
+set.seed(8)
+pMI_model <- train(healthy ~ ., data = pMI_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+pMI_model_parsimonious <- train(pMI_lr_step$formula, data = pMI_lr_data , method = 'glm', family='binomial', trControl = ctrl)
+
+pMI_eval <- evalm(pMI_model)
+pMI_eval_parsimonious <- evalm(pMI_model_parsimonious)
+
+# Storing results
+rownames_to_column(pMI_eval$stdres$`Group 1`) %>%
+  mutate(data = 'pMI', model = 'full') -> pMI_model_metrics
+pMI_model_metrics %>%
+  add_row(rowname = 'Accuracy', Score = pMI_model$results$Accuracy, CI = paste(pMI_model$results$Accuracy - pMI_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', pMI_model$results$Accuracy + pMI_model$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'pMI', model = 'full') %>% 
+  add_row(rowname = 'n_feats', Score = 71, data = 'pMI', model = 'full')  -> pMI_model_metrics
+
+rownames_to_column(pMI_eval_parsimonious$stdres$`Group 1`) %>%
+  mutate(data = 'pMI', model = 'parsimonious')-> pMI_model_parsimonious_metrics
+pMI_model_parsimonious_metrics %>%
+  add_row(rowname = 'Accuracy', Score = pMI_model_parsimonious$results$Accuracy, CI = paste(pMI_model_parsimonious$results$Accuracy - pMI_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds) , '-', pMI_model_parsimonious$results$Accuracy + pMI_model_parsimonious$results$AccuracySD * qnorm(0.975)/sqrt(n_folds)), data = 'pMI', model = 'parsimonious') %>% 
+  add_row(rowname = 'n_feats', Score = length(pMI_lr_step$coefficients) - 1, data = 'pMI', model = 'parsimonious')  -> pMI_model_parsimonious_metrics
+pMI_model_metrics
+pMI_model_parsimonious_metrics
+```
+```{r}
+# Combined result
+lr_results <- rbind(iMI_pca_model_metrics,
+                    iMI_pca_model_parsimonious_metrics,
+                    pMI_pca_model_metrics,
+                    pMI_pca_model_parsimonious_metrics,
+                    iMI_model_metrics,
+                    iMI_model_parsimonious_metrics,
+                    pMI_model_metrics,
+                    pMI_model_parsimonious_metrics)
+```
+
+```{r, results='hold'}
+# Combined result analysis
+lr_results %>% 
+  filter(rowname %in% c('Accuracy', 'AUC-ROC', 'F1', 'PREC', 'SENS', 'n_feats'),
+         model == 'parsimonious') %>% 
+  dplyr::select(-CI) %>% 
+  pivot_wider(names_from = rowname, values_from = Score) %>% 
+  mutate(feats = ifelse(str_detect(data, 'ED_ES'), 'ED + ES', 'Full Cycle'),
+         data = str_extract(data, 'iMI|pMI')) %>%
+  dplyr::select(data, feats, -n_feats, Accuracy, `AUC-ROC`, F1, PREC, SENS) %>%
+  kable(format = 'latex', booktabs = T, digits = 3)
+```
+
+
+```{r analysis-of-parsimonious-model-pMI}
+pMI_lr_step_summary <-summary(pMI_lr_step)
+pMI_lr_step_coeffs <- pMI_lr_step$coefficients
+names(pMI_lr_step_coeffs) <- as.numeric(str_extract(names(pMI_lr_step_coeffs), '\\d+'))
+as.data.frame(pMI_lr_step_coeffs) %>% 
+  rownames_to_column() -> pMI_lr_step_coeffs
+pMI_lr_step_coeffs
+```
+
+## Geometric Features
+
+## Temporal Features
+
+In this section, features that were identified as for predictive accuracy by the logistic regression.
+
+```{r latent-traversal-iMI-smoothing, fig.show='hold', out.width="50%"}
+# iMI features
+iMI_latent_numbers <- as.numeric(unlist(str_extract_all(names(iMI_lr_step$coefficients), '\\d+')))
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         temp_dim %in% iMI_latent_numbers,
+         geom_dim <= 2) %>%
+  merge(iMI_lr_step_coeffs, by.x = 'temp_dim', by.y = 'rowname') %>% 
+  mutate(temp_dim_name = paste(temp_dim, ifelse(iMI_lr_step_coeffs > 0, '(iMI +)', '(iMI -)'))) %>% 
+  arrange(temp_dim) %>% 
+  mutate(temp_dim = factor(temp_dim_name, levels = unique(temp_dim_name))) %>% 
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  stat_smooth(method = 'lm', formula = y ~ poly(x, 8), se = FALSE, size = 1.5) +
+  facet_nested('Geom. Dim.' + geom_dim ~ 'Temp. Dim.' + temp_dim, scales = 'free_y') +
+  theme_bw(base_size = 12) +
+  theme(strip.text = element_text(size = 12),  # facet labels
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12)) +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = TRUE) +
+  ggtitle('Latent Space Traversal, iMI')
+ggsave('iMI_latent_traversal.pdf', height = 4)
+```
+
+```{r latent-traversal-iMI-smoothing-1, fig.show='hold', out.width="50%"}
+# iMI features
+iMI_latent_numbers <- as.numeric(unlist(str_extract_all(names(iMI_lr_step$coefficients), '\\d+')))
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         geom_dim == 0, temp_dim == 0) %>%
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  stat_smooth(method = 'lm', formula = y ~ poly(x, 8), se = FALSE, size = 1.5) +
+  theme_bw(base_size = 18) +
+  theme(strip.text = element_text(size = 18),  # facet labels
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 18),
+        legend.text = element_text(size = 18),
+        legend.position = 'None') +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = T) +
+  ggtitle('Latent 0')
+```
+
+
+```{r latent-traversal-iMI-smoothing-2, fig.show='hold', out.width="50%"}
+# iMI features
+iMI_latent_numbers <- as.numeric(unlist(str_extract_all(names(iMI_lr_step$coefficients), '\\d+')))
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         geom_dim == 0, temp_dim == 2) %>%
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  stat_smooth(method = 'lm', formula = y ~ poly(x, 8), se = FALSE, size = 1.5) +
+  theme_bw(base_size = 18) +
+  theme(strip.text = element_text(size = 18),  # facet labels
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 18),
+        legend.text = element_text(size = 18),
+        legend.position = 'None') +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = T) +
+  ggtitle('Latent 2')
+```
+```{r latent-traversal-iMI-smoothing-4, fig.show='hold', out.width="50%"}
+# iMI features
+iMI_latent_numbers <- as.numeric(unlist(str_extract_all(names(iMI_lr_step$coefficients), '\\d+')))
+
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         geom_dim == 0, temp_dim == 2) %>%
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  stat_smooth(method = 'lm', formula = y ~ poly(x, 8), se = FALSE, size = 1.5) +
+  theme_bw(base_size = 18) +
+  theme(strip.text = element_text(size = 18),  # facet labels
+        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 18),
+        legend.text = element_text(size = 18),
+        legend.position = 'None') +
+  guides('none') +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = T) +
+  ggtitle('Latent 4')
+```
+
+```{r latent-traversal-iMI, fig.show='hold'}
+# iMI features
+iMI_latent_numbers <- as.numeric(unlist(str_extract_all(names(iMI_lr_step$coefficients), '\\d+')))
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         temp_dim %in% iMI_latent_numbers,
+         geom_dim <= 2) %>%
+  filter(geom_dim <= 4) %>% 
+  merge(iMI_lr_step_coeffs, by.x = 'temp_dim', by.y = 'rowname') %>% 
+  mutate(temp_dim = paste(temp_dim, ifelse(iMI_lr_step_coeffs > 0, '(iMI +)', '(iMI -)'))) %>% 
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  geom_line() +
+  facet_nested('Geom. Dim.' + geom_dim ~ 'Temp. Dim.' + temp_dim, scales = 'free_y') +
+  theme_bw() +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = T) +
+  ggtitle('Latent Space Traversal, iMI')
+```
+
+```{r latent-traversal-pMI-smoothing, fig.show='hold'}
+# pMI features
+pMI_latent_numbers <- as.numeric(unlist(str_extract_all(names(pMI_lr_step$coefficients), '\\d+')))
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         temp_dim %in% pMI_latent_numbers,
+         geom_dim <= 2) %>%
+  merge(pMI_lr_step_coeffs, by.x = 'temp_dim', by.y = 'rowname') %>% 
+  mutate(temp_dim_name = paste(temp_dim, ifelse(pMI_lr_step_coeffs > 0, '(pMI +)', '(pMI -)'))) %>% 
+  arrange(temp_dim) %>% 
+  mutate(temp_dim = factor(temp_dim_name, levels = unique(temp_dim_name))) %>% 
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  stat_smooth(method = 'lm', formula = y ~ poly(x, 8), se = FALSE, size = 1.5) +
+  facet_nested('Geom. Dim.' + geom_dim ~ 'Temp. Dim.' + temp_dim, scales = 'free_y') +
+  theme_bw(base_size = 12) +
+  theme(strip.text = element_text(size = 12),  # facet labels
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.title = element_text(size = 12)) +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = TRUE) +
+  ggtitle('Latent Space Traversal, pMI')
+ggsave('pMI_latent_traversal.pdf', height = 4)
+```
+
+```{r latent-traversal-pMI, fig.show='hold'}
+# iMI features
+pMI_latent_numbers <- as.numeric(unlist(str_extract_all(names(pMI_lr_step$coefficients), '\\d+')))
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         temp_dim %in% pMI_latent_numbers,
+         geom_dim <= 2) %>%
+  filter(geom_dim <= 4) %>% 
+  merge(pMI_lr_step_coeffs, by.x = 'temp_dim', by.y = 'rowname') %>% 
+  mutate(temp_dim = paste(temp_dim, ifelse(pMI_lr_step_coeffs > 0, '↑', '↓'))) %>% 
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  geom_line() +
+  facet_nested('Geom. Dim.' + geom_dim ~ 'Temp. Dim.' + temp_dim, scales = 'free_y') +
+  theme_bw() +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = T) +
+  ggtitle('Latent Space Traversal, pMI')
+
+```
+Probably want to put a 3D example just to drive the point home here.
+# Discussion

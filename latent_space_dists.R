@@ -5,6 +5,7 @@
 # Packages
 library(tidyverse)
 library(moments)
+library(knitr)
 
 # Results
 model_results <- read_csv("model_results.csv")
@@ -63,7 +64,9 @@ normality_stat_tests %>%
 normality_stats_table %>% 
   mutate(prop_normal_agostino = prop_normal_agostino * 100,
          prop_normal_shapiro = prop_normal_shapiro * 100) %>% 
-  select(temp_model, geom_model, prop_normal_shapiro, significance_shapiro, prop_normal_agostino, significance_agostino) %>% 
+  mutate(model = paste(temp_model, 'x', geom_model, sep = '')) %>% 
+  ungroup() %>% 
+  select(model, prop_normal_shapiro, significance_shapiro, prop_normal_agostino, significance_agostino) %>% 
   kable(digits = 1, format = 'latex', booktabs = T)
 
 # Latent space distribution plot

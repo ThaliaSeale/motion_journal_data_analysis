@@ -11,15 +11,15 @@ pca_experiment_names <- c('pca_16_components',
                       'pca_50_components',
                       'pca_6_components',
                       'pca_12_components',
-                      'pca_24_components',
-                      'kpca_poly_deg_1_6_pcs',
-                      'kpca_poly_deg_1_12_pcs',
-                      'kpca_poly_deg_1_16_pcs',
-                      'kpca_poly_deg_1_24_pcs',
-                      'kpca_poly_deg_1_50_pcs',
-                      'kpca_poly_final_deg_2',
-                      'kpca_poly_final_deg_3',
-                      'kpca_poly_final_deg_4'
+                      'pca_24_components'
+                      # 'kpca_poly_deg_1_6_pcs',
+                      # 'kpca_poly_deg_1_12_pcs',
+                      # 'kpca_poly_deg_1_16_pcs',
+                      # 'kpca_poly_deg_1_24_pcs',
+                      # 'kpca_poly_deg_1_50_pcs',
+                      # 'kpca_poly_final_deg_2',
+                      # 'kpca_poly_final_deg_3',
+                      # 'kpca_poly_final_deg_4'
                       )
 
 
@@ -61,14 +61,13 @@ errors %>%
   mutate(CI_upper = mean_error + qnorm(0.975) * sqrt(sd_error/n),
          CI_lower = mean_error - qnorm(0.975) * sqrt(sd_error/n)) -> summary_table
 summary_table %>% 
-  mutate(mean_error = signif(mean_error, digits = 3),
-         sd_error = signif(sd_error, digits = 3)) %>% 
+  mutate(mean_error = format(round(mean_error, digits = 3), nsmall = 3),
+         sd_error = format(round(sd_error, digits = 3), nsmall = 3)) %>% 
   mutate(error = paste(mean_error, ' (X', sd_error, ')', sep='')) %>% 
   select(model_type, n_components, error_type, error) %>% 
   pivot_wider(names_from = error_type, values_from = error) %>% 
-  select(model_type, n_components, train, valid)  %>% 
-  kable(format = 'latex', booktabs = TRUE)
-
+  select(model_type, n_components, train, valid) %>% 
+  kable(format = 'latex')
 
 # Plots
 # Components and performance

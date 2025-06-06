@@ -1,0 +1,86 @@
+---
+title: "CinC 2025"
+format:
+  pdf:
+    toc: true
+    number-sections: true
+    colorlinks: true
+editor: visual
+---
+
+```{r, setup}
+# Loading packages
+library(tidyverse)
+library(MASS)
+library(caret)
+library(knitr)
+
+# Loading data
+## Healthy Data
+healthy_errors <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features/errors.csv')
+healthy_latents <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features/temporal_representations.csv')
+## Incident MI
+iMI_errors <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_MI/errors.csv')
+iMI_latents <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_MI/temporal_representations.csv')
+## Prevalent MI 
+pMI_errors <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_prevalent/errors.csv')
+pMI_latents <- read.csv('/home/wolf6273/singular_spectrum_analysis/results/ssa_pca_50_components_on_pca_12_components_separated_features_prevalent/temporal_representations.csv')
+```
+
+```{r}
+# Creating a combined error df 
+## Formatting the error frames
+healthy_errors %>% 
+  mutate(data = 'healthy') %>% 
+  dplyr::select(-model) -> healthy_errors 
+
+iMI_errors %>% 
+  mutate(data = 'iMI') %>% 
+  dplyr::select(-model) -> iMI_errors
+
+pMI_errors %>% 
+  mutate(data = 'pMI') %>% 
+  dplyr::select(-model) -> pMI_errors
+
+## Combining into a single error frame
+errors <- rbind(healthy_errors,
+                iMI_errors,
+                pMI_errors)
+```
+
+# Methods
+
+## Dataset
+
+```{r}
+# Summary table for the number of samples
+errors %>% 
+  group_by(data, error_type) %>% 
+  distinct(sample) %>% 
+  summarise(n_samples = n())
+```
+
+# Results
+
+We train the model described in Section \[INSERT REF\] on a the healthy cohort, and test the model on a healthy, incident MI and prevalent MI cohort (healthy/iMI/pMI test.)
+
+## Reconstruction
+
+```{r}
+errors %>% 
+  group_by(data, sample, frame) %>% 
+  summarise(loss = mean(loss)) %>% 
+  group_by(data, sample) %>% 
+  summarise(loss = mean(loss)) %>% 
+  group_by(data) %>% 
+  summarise(mean_loss = mean(loss), sd_loss = sd(loss)) %>% 
+  kable(format = 'latex', booktabs = T, digits = 3)
+```
+
+## Geometric Features
+
+## Temporal Features
+
+## Risk Prediction
+
+# Discussion

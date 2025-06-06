@@ -120,9 +120,23 @@ ggsave('latent_traversal_GDLxTimeVAE.pdf')
 # ggsave('latent_traversal_PCAxPCAS.pdf')
 
 latent_traversals %>% 
-  filter(temp_model == 'PCA_sep', geom_model == 'PCA',
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
          temp_dim <= 10,
          geom_dim <= 15) %>%
+  ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
+  geom_line() +
+  facet_nested('Geom. Dim.' + geom_dim ~ 'Temp. Dim.' + temp_dim, scales = 'free_y') +
+  theme_bw() +
+  xlab('Frame') +
+  ylab('Value') +
+  scale_x_continuous(breaks = c(0,5,10)) +
+  scale_color_viridis_b('SD', show.limits = T) %>% %>% %>% %>%  +
+  ggtitle('Latent Space Traversal, PCAxPCAS')
+
+latent_traversals %>% 
+  filter(temp_model == 'PCAS', geom_model == 'PCA',
+         # temp_dim %in% c(0, 2, 10, 29, 39, 51)) 
+         temp_dim %in% wilcoxon_latent_results$latent_var) %>%
   ggplot(aes(x = frame, y = value, color = sd, group = sd)) +
   geom_line() +
   facet_nested('Geom. Dim.' + geom_dim ~ 'Temp. Dim.' + temp_dim, scales = 'free_y') +
@@ -133,4 +147,4 @@ latent_traversals %>%
   scale_color_viridis_b('SD', show.limits = T) +
   ggtitle('Latent Space Traversal, PCAxPCAS')
 
-ggsave('latent_traversal_PCAxPCAS.pdf', width = 10, height = 4)
+%>% %>% %>% %>% %>% %>% %>% %>% %>% %>% %>% ggsave('latent_traversal_PCAxPCAS.pdf', width = 10, height = 4)

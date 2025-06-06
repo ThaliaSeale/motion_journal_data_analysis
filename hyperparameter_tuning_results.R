@@ -3,6 +3,9 @@
 ###
 
 library(tidyverse)
+library(viridisLite)
+library(knitr)
+colors <- viridis(3)
 
 # Load results
 hyperparameter_tuning_results <- read_csv("hyperparameter_tuning_results.csv")
@@ -67,6 +70,10 @@ hyperparameter_tuning_results %>%
   kable(booktabs = T, format = 'latex', digits = 2)
 
 # emb dims
+hyperparameter_tuning_results %>% 
+  filter(geom_model == 'pca') %>% 
+  select(-geom_model) -> pca_hyperparam_results
+
 pca_hyperparam_results %>% 
   filter(loss_type == 'corresponding_points',
          beta_value == 0.001,
@@ -137,3 +144,101 @@ pca_hyperparam_results %>%
          model_architecture == 'vae_conv',
          n_geom_feats == 12
          ) 
+
+# Number of features
+hyperparameter_tuning_results %>% 
+  # drop_na() %>% 
+  filter(beta_value == 0.0001,
+         layers == '[50]',
+         model_architecture == 'timeVAE',
+         geom_model == 'pca') %>%
+  select(n_temp_feats, n_geom_feats, val_loss) %>% 
+  mutate(val_loss = round(val_loss, 2)) %>% 
+  pivot_wider(values_from = val_loss, names_from = n_geom_feats) %>% 
+  arrange(n_temp_feats) %>% 
+  kable('latex', booktabs=T)
+
+hyperparameter_tuning_results %>% 
+  drop_na() %>% 
+  filter(beta_value == 0.0001,
+         layers == '[50]',
+         model_architecture == 'timeVAE',
+         geom_model == 'pca') %>%
+  select(n_temp_feats, n_geom_feats, kld_loss) %>% 
+  mutate(kld_loss = round(kld_loss, 2)) %>% 
+  pivot_wider(values_from = kld_loss, names_from = n_geom_feats) %>% 
+  arrange(n_temp_feats) %>% 
+  kable('latex', booktabs=T)
+
+hyperparameter_tuning_results %>% 
+  drop_na() %>% 
+  filter(beta_value == 0.0001,
+         layers == '[50]',
+         model_architecture == 'timeVAE',
+         geom_model == 'pca') %>%
+  select(n_temp_feats, n_geom_feats, val_loss, kld_loss) %>% 
+  ggplot(aes(x = val_loss, y = kld_loss, color = as.factor(n_geom_feats), shape = as.factor(n_temp_feats))) +
+  geom_point() +
+  theme_bw() +
+  xlab('Reconstruction Loss') +
+  ylab('KLD Loss') +
+  guides(shape=guide_legend(title='k_temp'), color=guide_legend(title='k_geom')) +
+  scale_color_manual(values =colors) +
+  ggtitle('Recon. Loss vs KLD loss \n for different values of k_geom and k_temp')
+
+ggsave('PCAxTimeVAE_n_temp.png', height=4, width=6)
+
+hyperparameter_tuning_results %>% 
+  filter(beta_value == 0.0001,
+         layers == '[50]',
+         model_architecture == 'timeVAE',
+         geom_model == 'gdl') %>%
+  select(n_temp_feats, n_geom_feats, val_loss) %>% 
+  mutate(val_loss = round(val_loss, 2)) %>% 
+  pivot_wider(values_from = val_loss, names_from = n_geom_feats) %>% 
+  arrange(n_temp_feats) %>% 
+  kable('latex', booktabs=T)
+
+
+hyperparameter_tuning_results %>% 
+  drop_na() %>% 
+  filter(beta_value == 0.0001,
+         layers == '[50]',
+         model_architecture == 'timeVAE',
+         geom_model == 'gdl') %>%
+  select(n_temp_feats, n_geom_feats, kld_loss) %>% 
+  mutate(kld_loss = round(kld_loss, 2)) %>% 
+  pivot_wider(values_from = kld_loss, names_from = n_geom_feats) %>% 
+  arrange(n_temp_feats) %>% 
+  kable('latex', booktabs=T)
+  
+hyperparameter_tuning_results %>% 
+  drop_na() %>% 
+  filter(beta_value == 0.0001,
+         layers == '[50]',
+         model_architecture == 'timeVAE') %>% 
+  select(geom_model, n_temp_feats, n_geom_feats, val_loss, kld_loss) %>% 
+  ggplot(aes(x = val_loss, y = kld_loss, color = as.factor(n_geom_feats), shape = as.factor(n_temp_feats))) +
+  geom_point() +
+  theme_bw() +
+  xlab('Reconstruction Loss') +
+  ylab('KLD Loss') +
+  guides(shape=guide_legend(title='k_temp'), color=guide_legend(title='k_geom')) +
+  scale_color_manual(values =colors) +
+  facet_grid(geom_model ~ .) +
+  ggtitle('Recon. Loss vs KLD loss \n for different values of k_geom and k_temp')
+
+hyperparameter_tuning_results %>% 
+  drop_na() %>% 
+  filter(beta_value == 0.0001,
+         layers == '[50]',
+         model_architecture == 'timeVAE',
+         geom_model == 'gdl') %>%
+  select(n_temp_feats, n_geom_feats, kld_loss) %>% 
+  mutate(kld_loss = round(kld_loss, 2)) %>% 
+  pivot_wider(values_from = kld_loss, names_from = n_geom_feats) %>% 
+  arrange(n_temp_feats) %>% 
+  kable('latex', booktabs=T)
+
+ggsave('TimeVAE_n_temp.png', height=4, width=6)
+
