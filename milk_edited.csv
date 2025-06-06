@@ -1,0 +1,34 @@
+,Material_Description,Sum_of_Invoice_Receipt_Quantity,total_quantity,total_quantity_unit,PB,milk_type
+1,plenish coconut milk 8x1l (v)(org),1,8,L,TRUE,coconut
+2,drink latte caramel costa 250ml,156,3,L,FALSE,dairy
+3,drink latte costa 250ml,147,3,L,FALSE,dairy
+4,drink milkshake banana viva 200ml,1,5.4,L,FALSE,dairy
+5,shake chocolate high protein ufit 330ml,15,3.3,L,FALSE,dairy
+8,alpro oat barista for professionals glut,126,12,L,TRUE,oat
+9,drink rice alpro 1l,5,8,L,TRUE,rice
+10,gf milk soyacoconut professionalsalpro1l,74,12,L,TRUE,soy
+11,gf milk soyacoconut professionalsalpro1l,9,1,L,TRUE,soy
+12,milk almond for proffesionals alpro 1l,20,12,L,TRUE,almond
+13,milk almond unsweetened alpro 1l,9,1,L,TRUE,almond
+14,milk full fat 6x2litre,6,12,L,FALSE,dairy
+15,milk full fat milk 2ltr x each,36,2,L,FALSE,dairy
+16,milk semi skim poly rt 2.27l,3019,13.62,L,FALSE,dairy
+17,milk semi skimmed 6x2litre,4,12,L,FALSE,dairy
+18,milk semi skimmed case 10 x 189ml pack,5,1.89,L,FALSE,dairy
+19,milk semi skimmed cravendale 2l,69,12,L,FALSE,dairy
+20,milk semi skimmed cravendale 2l,16,2,L,FALSE,dairy
+21,milk semi skimmed milk 2ltr x each,525,2,L,FALSE,dairy
+22,milk semi skimmed uht 1l,494,12,L,FALSE,dairy
+23,milk semi skimmedx10 x568ml,4,5.68,L,FALSE,dairy
+24,milk skimmed 2ltr x each,0,2,L,FALSE,dairy
+25,milk skimmed pasteurised poly rt 568ml,7,5.68,L,FALSE,dairy
+26,milk skimmed pasteurised rt 2.27l,50,13.62,L,FALSE,dairy
+27,milk skimmedx 2ltr,0,2,L,FALSE,dairy
+28,milk soya alpro 250ml,31,3.75,L,TRUE,soy
+29,milk soya for professionals alpro 1l,129,12,L,TRUE,soy
+30,milk soya for professionals alpro 1l,62,1,L,TRUE,soy
+31,milk whole pasteurised standard rt 2.27l,46,13.62,L,FALSE,dairy
+32,rec drink oat uht alpro 1l,3,1,L,TRUE,oat
+33,rec semi skimmed milk (green) 6x2.27l,0,13.62,L,FALSE,dairy
+34,coconut milk amoy 400ml,30,4.8,L,TRUE,coconut
+35,coconut milk brakes 400ml,138,9.6,L,TRUE,coconut
