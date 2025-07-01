@@ -27,6 +27,13 @@ which(!(0:52 %in% filter(clinical_metrics, split == 'test', population == 'healt
 # PCAxPCA
 which(!(0:499 %in% filter(clinical_metrics, split == 'test', population == 'PCAxPCA')$i))
 
+clinical_metrics %>% 
+  group_by(population) %>% 
+  summarise(n())
+clinical_metrics %>% 
+  filter(population == 'PCAxTimeVAE')
+
+
 # Calculating derived metrics
 clinical_metrics %>% 
   mutate(across(LVEDV:LVepiEDV, ~ .x/1000)) %>% 
@@ -73,16 +80,49 @@ clinical_metric_summary %>%
   arrange(metric) %>% 
   mutate(across(c(mean, sd), ~ round(.x , digits = 2)),
          mean = paste(mean, ' (X ', sd, ')', sep = '')) %>%
-  select(-sd) %>%
-  pivot_wider(names_from = population, values_from = mean) -> clinical_metric_summary
-clinical_metric_summary
+  select(-sd) -> clinical_metric_summary
 
 # Distributional differences
+models <- c("Baseline",           
+            "PCAxPCA normal",
+            "PCAxPCA truncnorm",
+            "PCAxPCA KDE gaussian",
+            "PCAxPCA KDE tophat",
+            "PCAxTimeVAE ",
+            "GDLxPCA normal",
+            "GDLxPCA truncnorm",
+            "GDLxPCA KDE gaussian",
+            "GDLxPCA KDE tophat",
+            "GDLxTimeVAE "
+            )
+models <- rev(models)
+
 clinical_metrics %>% 
-  # filter(split == 'test') %>% 
-  ggplot(aes(x = population, y = value, fill = population)) + 
-  geom_violin() + 
-  facet_wrap(~ metric, scales = 'free') 
+  filter(split == 'test') %>% 
+  group_by(population) %>% 
+  summarise(n())
+
+clinical_metrics %>% 
+  filter(split == 'test') %>%
+  mutate(geom_method = str_extract(population, '^(PCA|GDL)')) %>% 
+  mutate(temp_method = str_extract(population, '(?<=x)(PCA|TimeVAE)')) %>% 
+  mutate(sampling_method = str_extract(population, 'truncnorm|normal|kde_tophat|kde_gaussian'),
+         sampling_method = str_replace_all(sampling_method, '_', ' '),
+         sampling_method = str_replace_all(sampling_method, 'kde', 'KDE'),
+         sampling_method = ifelse(is.na(sampling_method), '', sampling_method)) %>% 
+  mutate(population = ifelse(population == 'healthy', 'Baseline', paste(geom_method, 'x', temp_method, ' ', sampling_method, sep = ''))) %>% 
+  mutate(population = factor(population, levels = models)) %>% 
+  filter(metric %in% c('LV.mass', 'LVEF', 'RVEF')) %>%
+  ggplot(aes(y = population, x = value, fill = population)) +
+  geom_violin() +
+  facet_grid(. ~ metric, scales = 'free') +
+  theme_bw()+
+  theme(legend.position = 'none') +
+  xlab('Metric Value') +
+  ylab('Sampling Method') +
+  ggtitle('Distributions of Sampled Clinical Metrics')
+
+ggsave('clinical_metric_dists.pdf')
  
 ks_test <- function(Population, Metric){
   x <- (clinical_metrics %>% 
@@ -100,15 +140,35 @@ clinical_metrics %>%
 ks_results$ks_result <- Map(ks_test, ks_results$population, ks_results$metric)
 ks_results %>% 
   mutate(ks_result = as.numeric(ks_result)) -> ks_results
-ks_results %>% 
-  filter(population == 'PCAxPCA_truncnorm')
-ks_results %>% 
-  filter(population == 'PCAxPCA_tophat')
 
+ks_results %>% 
+  mutate(old_population = population) %>% 
+  filter(metric %in% c('LV.mass', 'LVEF', 'RVEF')) %>% 
+  mutate(geom_method = str_extract(population, '^(PCA|GDL)')) %>% 
+  mutate(temp_method = str_extract(population, '(?<=x)(PCA|TimeVAE)')) %>% 
+  mutate(sampling_method = str_extract(population, 'truncnorm|normal|kde_tophat|kde_gaussian'),
+         sampling_method = str_replace_all(sampling_method, '_', ' '),
+         sampling_method = str_replace_all(sampling_method, 'kde', 'KDE'),
+         sampling_method = ifelse(is.na(sampling_method), '', sampling_method)) %>% 
+  mutate(population = ifelse(population == 'healthy', 'Baseline', paste(geom_method, 'x', temp_method, ' ', sampling_method, sep = ''))) %>% 
+  mutate(ks_result = round(ks_result, digits = 3)) %>% 
+  pivot_wider(names_from = metric, values_from = ks_result, names_prefix = 'KS_') -> ks_results
+
+clinical_metric_summary %>% 
+  filter(metric %in% c('LV.mass', 'LVEF', 'RVEF')) %>%
+  merge(ks_results, by.x = 'population', by.y = 'old_population', all.x = T) %>% 
+  pivot_wider(names_from = metric, values_from = mean) %>% 
+  mutate(population.y = as.character(population.y),
+         population.y = ifelse(is.na(population.y), 'Baseline', population.y)) %>% 
+  mutate(population.y = factor(population.y, levels = rev(models))) %>% 
+  arrange(population.y) %>% 
+  select(geom_method, temp_method, sampling_method, LV.mass, LVEF, RVEF, KS_LV.mass, KS_LVEF, KS_RVEF) %>% 
+    kable(format = 'latex', booktabs = T)
 
 # MMD COV 1-NNA
 
 gen_metrics <- read.csv('/home/wolf6273/4D_geom/checkpoints/generative_metrics/metrics.csv')
+gen_metrics
 
 models <- c('PCAxPCA',
             'PCAxTimeVAE',
@@ -135,8 +195,10 @@ sampling_method <- c('KDE (Tophat)',
                      'Norm.')
 
 gen_metrics <- cbind(models, sampling_method, gen_metrics)
+gen_metrics
 
 gen_metrics %>% 
   select(-exp_name) %>% 
+  mutate(models = factor(models, levels = c('Baseline', 'PCAxPCA', 'PCAxTimeVAE', 'GDLxPCA', 'GDLxTimeVAE'))) %>% 
   arrange(models) %>% 
   kable(format = 'latex', booktabs = T, digits = 3)

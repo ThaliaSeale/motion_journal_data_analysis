@@ -1,8 +1,12 @@
 population,metrics_path
 healthy,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/clinical_metrics_train_metrics.csv
 PCAxPCA_normal,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/pcaXpca_normal_dist_generation_metrics.csv
-PCAxPCA_kde,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/pcaXpca_kde_metrics.csv
+PCAxPCA_kde_gaussian,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/pcaXpca_kde_metrics.csv
 PCAxPCA_truncnorm,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/pcaXpca_truncnorm_metrics.csv
-PCAxPCA_tophat,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/pcaXpca_tophat_metrics.csv
+PCAxPCA_kde_tophat,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/pcaXpca_tophat_metrics.csv
 PCAxTimeVAE,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/final_pca_timeVAE_metrics.csv
 GDLxTimeVAE,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/gdlXtimeVAE_metrics.csv
+GDLxPCA_normal,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/gdlXPCA_metrics.csv
+GDLxPCA_kde_gaussian,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/gdlXPCA_gaussian_metrics.csv
+GDLxPCA_truncnorm,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/gdlXPCA_truncnorm_metrics.csv
+GDLxPCA_kde_tophat,/home/wolf6273/4D_geom/checkpoints/clinical_metrics/gdlXPCA_kde_tophat_metrics.csv

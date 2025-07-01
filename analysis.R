@@ -50,3 +50,38 @@ dataset %>%
         legend.position = "right") +
   facet_wrap(~ sex, scales = "free_x") +
   ggtitle('Sex-specific Classification of Left Ventricular Ejection Fraction (LVEF)')
+
+# 1. Filter for healthy and iMI
+df_filtered <- subset(dataset, status %in% c("healthy", "iMI"))
+
+# 2. Convert status to binary (1 = iMI, 0 = healthy)
+df_filtered$status_bin <- ifelse(df_filtered$status == "iMI", 1, 0)
+
+# 3. Select predictor columns starting with "X"
+X_cols <- grep("^X", names(df_filtered), value = TRUE)
+
+# 4. Split by sex
+df_female <- subset(df_filtered, sex == 0)
+df_male   <- subset(df_filtered, sex == 1)
+
+# 5. Create formulas
+full_formula <- as.formula(paste("status_bin ~", paste(X_cols, collapse = " + ")))
+null_formula <- status_bin ~ 1
+
+# 6. Fit null models
+null_model_female <- glm(null_formula, data = df_female, family = binomial())
+null_model_male   <- glm(null_formula, data = df_male, family = binomial())
+
+# 7. Forward AIC selection
+selected_model_female <- step(null_model_female,
+                              scope = list(lower = null_formula, upper = full_formula),
+                              direction = "forward", trace = TRUE)
+
+selected_model_male <- step(null_model_male,
+                            scope = list(lower = null_formula, upper = full_formula),
+                            direction = "forward", trace = TRUE)
+
+# 8. Summarise results
+summary(selected_model_female)
+summary(selected_model_male)
+
